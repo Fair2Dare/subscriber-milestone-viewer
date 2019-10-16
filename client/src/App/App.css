@@ -20,3 +20,17 @@
 .App-link {
   color: #09d3ac;
 }
+
+.appStyle {
+  text-align: center;
+  justify-content: center;
+}
+
+.twitchBtn {
+  background-color: blueviolet;
+  transition-duration: 0.4s;
+}
+
+.twitchBtn:hover {
+  background-color: rgb(130, 43, 226);
+}
