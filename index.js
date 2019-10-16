@@ -1,20 +1,23 @@
 var express = require('express');
 var session = require('express-session');
 var passport = require('passport');
+var bodyParser = require('body-parser');
 var OAuth2Strategy = require('passport-oauth').OAuth2Strategy;
 var request = require('request');
 var dotenv = require('dotenv');
 
 dotenv.config();
 
+const tokenUserPairs = {};
+
 // Initialize Express and middlewares
 var app = express();
-app.use(
-  session({ secret: SESSION_SECRET, resave: false, saveUninitialized: false })
-);
+app.use(session({ secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false }));
 app.use(express.static('client/build'));
 app.use(passport.initialize());
 app.use(passport.session());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
 // Override passport profile function to get user profile from Twitch API
 OAuth2Strategy.prototype.userProfile = function(accessToken, done) {
@@ -71,28 +74,37 @@ passport.use(
 );
 
 // Set route to start OAuth link, this is where you define scopes to request
-app.get(
-  '/auth/twitch',
-  passport.authenticate('twitch', { scope: 'user_read channel_subscriptions' })
-);
+app.get('/auth/twitch', passport.authenticate('twitch', { scope: 'user_read channel_subscriptions' }));
 
 // Set route for OAuth redirect
-app.get(
-  '/auth/twitch/callback',
-  passport.authenticate('twitch', {
-    successRedirect: '/loginSuccess',
-    failureRedirect: '/'
-  })
-);
-
-app.get('/loginSuccess', function(req, res) {
+app.get('/auth/twitch/callback', passport.authenticate('twitch'), function(req, res) {
   if (req.session && req.session.passport && req.session.passport.user) {
-    res.send(req.session.passport.user);
+    tokenUserPairs[req.session.passport.user.accessToken] = req.session.passport.user.data[0].name;
+    res.redirect('/username/' + req.session.passport.user.data[0].name + '/token/' + req.session.passport.user.accessToken);
+  } else {
+    res.redirect('/');
   }
 });
 
+app.get('/username/:username/token/:token', function(req, res) {
+  if (tokenUserPairs[req.params.token] === req.params.username) {
+    res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+  } else {
+    res.redirect('/');
+  }
+});
+
+app.post('/logout', function(req, res) {
+  tokenUserPairs.remove(req.body.token);
+  res.status(200).done();
+});
+
 app.get('/', function(req, res) {
-  res.send(path.join(__dirname, 'client/build', 'index.html'));
+  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+});
+
+app.get('*', function(req, res) {
+  res.redirect('/');
 });
 
 app.listen(process.env.PORT || 5000);

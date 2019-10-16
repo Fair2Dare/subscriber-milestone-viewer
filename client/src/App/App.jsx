@@ -13,10 +13,6 @@ export default class App extends React.PureComponent {
     };
   }
 
-  // handleClick = () => {
-  //   fetch('/auth/twitch').then(response => console.log(response));
-  // }
-
   render() {
     const loginPage = (
       <div className="LoginPage">
